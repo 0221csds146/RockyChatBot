@@ -70,7 +70,7 @@
 | Feature        | Screenshot |
 |----------------|------------|
 | URL Input & Querying | ![URL Input](screenshots/url_input.png) |
-| Answer with Sources  | ![Answer](screenshots/answer_output.png) |
+| Answer with Sources  | ![Answer]([screenshots/answer_output.png](https://github.com/0221csds146/RockyChatBot/blob/main/Screenshot/Screenshot%202025-05-31%20205222.png)) |
 
 ---
 
