@@ -11,7 +11,8 @@ from langchain_community.document_loaders import WebBaseLoader
 
 # Load environment variables from .env
 load_dotenv()
-os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
+#os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
+os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
 
 # Streamlit UI setup
 st.title("RockyBot: News Research Tool 📈")
