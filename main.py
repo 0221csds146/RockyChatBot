@@ -6,13 +6,16 @@ from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import WebBaseLoader
 
 # Load environment variables from .env
 load_dotenv()
-#os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
-os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
+os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
+
+# Initialize session state
+if 'vectorstore' not in st.session_state:
+    st.session_state.vectorstore = None
 
 # Streamlit UI setup
 st.title("RockyBot: News Research Tool 📈")
@@ -26,7 +29,6 @@ for i in range(3):
         urls.append(url)
 
 process_url_clicked = st.sidebar.button("Process URLs")
-index_path = "chroma_index_gemini"  # Directory for Chroma vector store
 
 main_placeholder = st.empty()
 
@@ -51,22 +53,19 @@ if process_url_clicked and urls:
     main_placeholder.text("📚 Splitting text into chunks...")
     docs = text_splitter.split_documents(data)
 
-    # Generate embeddings and store in Chroma
+    # Generate embeddings and store in FAISS
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vectorstore_gemini = Chroma.from_documents(docs, embeddings, persist_directory=index_path)
-    vectorstore_gemini.persist()
+    st.session_state.vectorstore = FAISS.from_documents(docs, embeddings)
+    
     main_placeholder.text("✅ Vectorstore created and saved!")
 
 # Input query and show answer
 query = main_placeholder.text_input("Ask a question about the articles:")
 if query:
-    if os.path.exists(index_path):
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        vectorstore = Chroma(persist_directory=index_path, embedding_function=embeddings)
-
+    if st.session_state.vectorstore is not None:
         chain = RetrievalQAWithSourcesChain.from_llm(
             llm=llm,
-            retriever=vectorstore.as_retriever()
+            retriever=st.session_state.vectorstore.as_retriever()
         )
         result = chain({"question": query}, return_only_outputs=True)
 
@@ -78,3 +77,5 @@ if query:
             st.subheader("🔗 Sources:")
             for source in sources.split("\n"):
                 st.write(source)
+    else:
+        st.warning("Please process some URLs first!")
