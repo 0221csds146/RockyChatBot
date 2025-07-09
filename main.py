@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import FAISS
-from langchain.document_loaders import WebBaseLoader
+from langchain_community.vectorstores import Chroma
+from langchain_community.document_loaders import WebBaseLoader
 
 # Load environment variables from .env
 load_dotenv()
@@ -25,7 +25,7 @@ for i in range(3):
         urls.append(url)
 
 process_url_clicked = st.sidebar.button("Process URLs")
-index_path = "faiss_index_gemini"  # Directory for FAISS index
+index_path = "chroma_index_gemini"  # Directory for Chroma vector store
 
 main_placeholder = st.empty()
 
@@ -39,7 +39,7 @@ llm = ChatGoogleGenerativeAI(
 if process_url_clicked and urls:
     # Load documents from URLs using WebBaseLoader
     loader = WebBaseLoader(urls)
-    main_placeholder.text("Data Loading... Started ✅✅✅")
+    main_placeholder.text("🔄 Loading data from URLs...")
     data = loader.load()
 
     # Split text into chunks
@@ -47,40 +47,33 @@ if process_url_clicked and urls:
         separators=['\n\n', '\n', '.', ','],
         chunk_size=1000
     )
-    main_placeholder.text("Text Splitting... Started ✅✅✅")
+    main_placeholder.text("📚 Splitting text into chunks...")
     docs = text_splitter.split_documents(data)
 
-    # Generate embeddings and create FAISS index
+    # Generate embeddings and store in Chroma
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vectorstore_gemini = FAISS.from_documents(docs, embeddings)
-    main_placeholder.text("Embedding Vectorstore Created ✅✅✅")
-    time.sleep(2)
+    vectorstore_gemini = Chroma.from_documents(docs, embeddings, persist_directory=index_path)
+    vectorstore_gemini.persist()
+    main_placeholder.text("✅ Vectorstore created and saved!")
 
-    # Save FAISS index locally
-    vectorstore_gemini.save_local(index_path)
-    main_placeholder.text("Vectorstore Saved Successfully!")
-
-# Query input and response
+# Input query and show answer
 query = main_placeholder.text_input("Ask a question about the articles:")
 if query:
     if os.path.exists(index_path):
         embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        vectorstore = FAISS.load_local(
-            index_path,
-            embeddings,
-            allow_dangerous_deserialization=True
-        )
+        vectorstore = Chroma(persist_directory=index_path, embedding_function=embeddings)
+
         chain = RetrievalQAWithSourcesChain.from_llm(
             llm=llm,
             retriever=vectorstore.as_retriever()
         )
         result = chain({"question": query}, return_only_outputs=True)
 
-        st.header("Answer")
+        st.header("📌 Answer")
         st.write(result["answer"])
 
         sources = result.get("sources", "")
         if sources:
-            st.subheader("Sources:")
+            st.subheader("🔗 Sources:")
             for source in sources.split("\n"):
                 st.write(source)
