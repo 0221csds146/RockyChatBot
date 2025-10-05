@@ -11,7 +11,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain.chat_models import ChatOpenAI
+from langchain.embeddings import OpenAIEmbeddings
+
 from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -104,10 +106,11 @@ st.markdown("""
 
 # Load API key
 try:
-    os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
-except:
+    os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+except KeyError:
+    # If not found, load from .env
     load_dotenv()
-    os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
+    os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 def extract_content_with_requests(url):
     """Enhanced content extraction with better error handling"""
@@ -307,7 +310,7 @@ with col2:
                     docs = text_splitter.split_documents(documents)
                     
                     status_text.text("🧠 Generating embeddings...")
-                    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+                    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
                     st.session_state.vectorstore = FAISS.from_documents(docs, embeddings)
                     
                     progress_bar.progress(1.0)
@@ -400,7 +403,7 @@ if query:
                     thinking_placeholder.empty()
                     
                     chain = RetrievalQAWithSourcesChain.from_llm(
-                        llm=ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.9, max_tokens=500),
+                        llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0),
                         retriever=st.session_state.vectorstore.as_retriever(search_kwargs={"k": 3})
                     )
                     
